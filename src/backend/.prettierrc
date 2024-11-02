@@ -1,0 +1,39 @@
+{
+  // HUMAN TASKS:
+  // 1. Install prettier@^2.8.0 as a dev dependency
+  // 2. Configure editor/IDE to use project's Prettier configuration
+  // 3. Set up pre-commit hooks to run Prettier automatically
+  // 4. Ensure CI pipeline includes Prettier checks
+
+  // Requirement: Code Style Standards (5. Technology Stack/5.1 Programming Languages)
+  // Enforces consistent code formatting for TypeScript 5.0+ development
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "quoteProps": "as-needed",
+  "jsxSingleQuote": false,
+  "trailingComma": "es5",
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "arrowParens": "always",
+  "endOfLine": "lf",
+
+  // Additional TypeScript-specific settings aligned with tsconfig.json
+  "parser": "typescript",
+  "overrides": [
+    {
+      "files": "*.ts",
+      "options": {
+        "parser": "typescript"
+      }
+    },
+    {
+      "files": ["*.json", "*.jsonc"],
+      "options": {
+        "parser": "json"
+      }
+    }
+  ]
+}
