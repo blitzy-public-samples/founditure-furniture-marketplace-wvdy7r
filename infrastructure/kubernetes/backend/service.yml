@@ -1,0 +1,66 @@
+# Kubernetes v1.24+
+# Human Tasks:
+# 1. Verify service port configuration matches with ingress rules
+# 2. Configure network policies to restrict service access
+# 3. Set up monitoring alerts for service endpoints
+# 4. Review and adjust load balancer settings if needed
+# 5. Verify service mesh integration if applicable
+
+# Requirement: Load Balancing - Load-balanced application servers for distributing traffic
+apiVersion: v1
+kind: Service
+metadata:
+  name: founditure-backend
+  namespace: prod
+  labels:
+    app: founditure-backend
+    tier: backend
+  annotations:
+    # Enable Prometheus metrics scraping
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+    # Service description
+    description: "Founditure backend service for HTTP and WebSocket traffic"
+spec:
+  # Using ClusterIP for internal service discovery
+  # Requirement: API Gateway - RESTful API gateway for client-server communication
+  type: ClusterIP
+  
+  # Port configuration for HTTP and WebSocket protocols
+  # Requirement: Real-time Communication - WebSocket connections for real-time features
+  ports:
+    # HTTP port for REST API
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+    # WebSocket port for real-time communication
+    - name: websocket
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  
+  # Selector matching deployment pod labels
+  selector:
+    app: founditure-backend
+    tier: backend
+  
+  # Session affinity for consistent routing
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
+  
+  # Publishing not ready addresses
+  publishNotReadyAddresses: false
+  
+  # IP family policy
+  ipFamilyPolicy: SingleStack
+  ipFamilies:
+    - IPv4
+  
+  # Internal traffic policy
+  internalTrafficPolicy: Cluster
+  
+  # External traffic policy (even though using ClusterIP)
+  externalTrafficPolicy: Cluster
