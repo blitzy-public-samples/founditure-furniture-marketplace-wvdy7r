@@ -1,0 +1,138 @@
+# Human Tasks:
+# 1. Ensure cluster admin privileges to create namespaces and resource quotas
+# 2. Verify network policy compatibility with cluster CNI plugin
+# 3. Configure external DNS if using custom domain names
+# 4. Set up monitoring and logging tools for namespace
+
+# Kubernetes API version v1.24+ required
+# Addresses requirements:
+# - Development Environment Configuration (8.1)
+# - Kubernetes Orchestration (8.4)
+
+---
+# Namespace Definition
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    environment: development
+    app: founditure
+spec:
+  finalizers:
+    - kubernetes
+
+---
+# Resource Quota Configuration
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-quota
+  namespace: dev
+spec:
+  hard:
+    # Compute resource limits
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    
+    # Object count limits
+    pods: "20"
+    services: "10"
+    persistentvolumeclaims: "10"
+    secrets: "20"
+    configmaps: "20"
+
+---
+# Network Policy Configuration
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dev-network-policy
+  namespace: dev
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              environment: development
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              environment: development
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 53  # DNS
+        - protocol: UDP
+          port: 53  # DNS
+
+---
+# RBAC Configuration
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dev-role
+  namespace: dev
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-rolebinding
+  namespace: dev
+subjects:
+  - kind: User
+    name: developer
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: dev-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# LimitRange to set default resource constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dev-limits
+  namespace: dev
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "200m"
+        memory: "256Mi"
+      max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
