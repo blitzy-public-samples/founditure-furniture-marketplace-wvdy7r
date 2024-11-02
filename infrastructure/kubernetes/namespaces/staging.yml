@@ -1,0 +1,82 @@
+# Human Tasks:
+# 1. Ensure cluster administrators review and approve the resource quotas
+# 2. Verify network policies align with organization's security requirements
+# 3. Configure monitoring and logging tools to track resource usage in staging namespace
+
+# Kubernetes API version v1.24+ required
+# This file defines the staging namespace configuration with resource constraints and security policies
+# Addresses requirements:
+# - Staging Environment Configuration: Fixed 2 nodes in single region
+# - Container Orchestration: Kubernetes (EKS) configuration for environment management
+
+---
+apiVersion: v1
+kind: List
+items:
+# Namespace definition with environment labels
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: staging
+    labels:
+      name: staging
+      environment: staging
+
+# Resource quotas to limit resource consumption in staging environment
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: staging-quota
+    namespace: staging
+  spec:
+    hard:
+      # CPU and Memory limits aligned with 2-node staging environment
+      requests.cpu: "4"
+      requests.memory: "8Gi"
+      limits.cpu: "8"
+      limits.memory: "16Gi"
+      # Object count limits for staging environment
+      pods: "20"
+      services: "10"
+      persistentvolumeclaims: "10"
+      secrets: "20"
+      configmaps: "20"
+
+# Default resource limits for containers in staging namespace
+- apiVersion: v1
+  kind: LimitRange
+  metadata:
+    name: staging-limits
+    namespace: staging
+  spec:
+    limits:
+    - type: Container
+      # Default resource allocation for containers
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      # Minimum resource requests for containers
+      defaultRequest:
+        cpu: "100m"
+        memory: "256Mi"
+      # Maximum allowed resources per container
+      max:
+        cpu: "2"
+        memory: "2Gi"
+
+# Network policies to control traffic flow in staging namespace
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: staging-network-policy
+    namespace: staging
+  spec:
+    podSelector: {}  # Applies to all pods in namespace
+    policyTypes:
+    - Ingress
+    - Egress
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            environment: staging  # Only allow traffic from staging namespace
