@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Requirement: Mobile Applications - Native Android application (Android 8.0+) with modern adaptive icon support.
+Library version: android-33 (Android 13)
+
+Human Tasks:
+1. Verify the background color matches the app's branding guidelines
+2. Ensure the icon background renders correctly on different Android devices
+3. Test the adaptive icon appearance in different launcher shapes (circle, square, rounded square, etc.)
+4. Validate the icon background contrast with the foreground layer
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Base background layer using the app's background color -->
+    <path
+        android:fillColor="@color/background"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Overlay layer with subtle white tint for depth -->
+    <group
+        android:scaleX="0.9"
+        android:scaleY="0.9"
+        android:translateX="5.4"
+        android:translateY="5.4">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.1"
+            android:pathData="M0,0h108v108h-108z" />
+    </group>
+
+</vector>
