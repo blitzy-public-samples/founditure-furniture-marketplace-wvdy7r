@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Material Design 3 dark theme implementation for Founditure Android app
+Dependencies:
+- com.google.android.material:material:1.9.0
+- androidx.appcompat:appcompat:1.6.1
+- androidx.core.splashscreen:1.0.1
+
+Human Tasks:
+1. Verify dark theme appearance on different Android versions (8.0+)
+2. Test dark theme contrast ratios for accessibility compliance
+3. Validate dark theme with TalkBack and other accessibility services
+4. Confirm dark theme splash screen branding with design team
+-->
+
+<resources>
+    <!-- Requirement: Mobile Applications - Native Android application (Android 8.0+) with dark theme support -->
+    <style name="Theme.Founditure" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary brand colors -->
+        <item name="colorPrimary">@color/primary_light</item>
+        <item name="colorPrimaryDark">@color/primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+
+        <!-- System bars -->
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#121212</item>
+        <item name="android:windowBackground">#121212</item>
+
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:textColorSecondary">#B3FFFFFF</item>
+
+        <!-- Requirement: UI Components - Common UI components requiring consistent dark mode theming -->
+        <!-- Material component styles -->
+        <item name="materialButtonStyle">@style/Widget.Founditure.Button.Dark</item>
+        <item name="bottomNavigationStyle">@style/Widget.Founditure.BottomNavigation.Dark</item>
+        <item name="toolbarStyle">@style/Widget.Founditure.Toolbar.Dark</item>
+        <item name="materialCardViewStyle">@style/Widget.Founditure.CardView.Dark</item>
+        <item name="textInputStyle">@style/Widget.Founditure.TextInputLayout.Dark</item>
+        <item name="chipStyle">@style/Widget.Founditure.Chip.Dark</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Founditure.BottomSheetDialog.Dark</item>
+    </style>
+
+    <!-- Requirement: Mobile Client Architecture - UI Layer implementation with dark mode support -->
+    <style name="Widget.Founditure.Button.Dark" parent="Widget.Material3.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.05</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:background">@color/primary</item>
+    </style>
+
+    <style name="Widget.Founditure.BottomNavigation.Dark" parent="Widget.Material3.BottomNavigationView">
+        <item name="android:background">#1E1E1E</item>
+        <item name="itemIconTint">@color/primary_light</item>
+        <item name="itemTextColor">#FFFFFF</item>
+    </style>
+
+    <style name="Widget.Founditure.Toolbar.Dark" parent="Widget.Material3.Toolbar">
+        <item name="android:background">#1E1E1E</item>
+        <item name="android:elevation">4dp</item>
+        <item name="titleTextAppearance">@style/TextAppearance.Founditure.Toolbar.Title.Dark</item>
+    </style>
+
+    <style name="TextAppearance.Founditure.Toolbar.Title.Dark" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.Founditure.CardView.Dark" parent="Widget.Material3.CardView.Filled">
+        <item name="cardElevation">2dp</item>
+        <item name="cardCornerRadius">8dp</item>
+        <item name="contentPadding">16dp</item>
+        <item name="cardBackgroundColor">#1E1E1E</item>
+        <item name="rippleColor">@color/primary_light</item>
+    </style>
+
+    <style name="Widget.Founditure.TextInputLayout.Dark" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">#1E1E1E</item>
+        <item name="boxStrokeColor">@color/primary_light</item>
+        <item name="hintTextColor">#B3FFFFFF</item>
+        <item name="android:textColorHint">#80FFFFFF</item>
+    </style>
+
+    <style name="Widget.Founditure.Chip.Dark" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">#1E1E1E</item>
+        <item name="chipStrokeColor">@color/primary_light</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="ThemeOverlay.Founditure.BottomSheetDialog.Dark" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.Material3.BottomSheet.Modal</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:background">#1E1E1E</item>
+    </style>
+
+    <!-- Splash screen theme -->
+    <style name="Theme.Founditure.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#121212</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Founditure</item>
+    </style>
+</resources>
