@@ -1,0 +1,64 @@
+PODS:
+  - Alamofire (5.8.1)
+  - AWSCore (2.33.8)
+  - AWSS3 (2.33.8):
+    - AWSCore (= 2.33.8)
+  - Firebase/Analytics (10.18.0):
+    - Firebase/Core
+  - Firebase/Auth (10.18.0):
+    - Firebase/CoreOnly
+    - FirebaseAuth (~> 10.18.0)
+  - Firebase/Core (10.18.0):
+    - Firebase/CoreOnly
+    - FirebaseAnalytics (~> 10.18.0)
+  - Firebase/CoreOnly (10.18.0):
+    - FirebaseCore (= 10.18.0)
+  - Firebase/Messaging (10.18.0):
+    - Firebase/CoreOnly
+    - FirebaseMessaging (~> 10.18.0)
+  - GoogleMaps (8.2.0):
+    - GoogleMaps/Maps (= 8.2.0)
+  - GoogleMaps/Base (8.2.0)
+  - GoogleMaps/Maps (8.2.0):
+    - GoogleMaps/Base
+  - Kingfisher (7.10.0)
+  - SocketIO-Client-Swift (16.1.0):
+    - Starscream (~> 4.0)
+  - Starscream (4.0.6)
+  - SwiftLint (0.54.0)
+  - TensorFlowLiteSwift (2.13.0):
+    - TensorFlowLiteC (= 2.13.0)
+  - TensorFlowLiteC (2.13.0)
+
+DEPENDENCIES:
+  - Alamofire (~> 5.8.1)
+  - AWSS3 (~> 2.33.8)
+  - Firebase/Analytics
+  - Firebase/Auth
+  - Firebase/Messaging
+  - GoogleMaps (~> 8.2.0)
+  - Kingfisher (~> 7.10.0)
+  - SocketIO-Client-Swift (~> 16.1.0)
+  - SwiftLint (~> 0.54.0)
+  - TensorFlowLiteSwift (~> 2.13.0)
+
+SPEC CHECKSUMS:
+  Alamofire: 3ca42e259043ee0dc5c0cdd76c4bc568b8e42af7
+  AWSCore: 7c02ca21c8f8c06c8d32a9c5a524a413a27c3d48
+  AWSS3: 7c9c9d5e3b82b8b97a9c4f8e8b5d0a1c7c2d6c8f
+  Firebase: 800f16f07af493d98d017446a315c27af0552320
+  FirebaseAnalytics: 7bc7de519111dae802f5bc0c9c083918f8b8870d
+  FirebaseAuth: 741e99c5816ea60ea9d592c71d9d0df5c36ad16a
+  FirebaseCore: 25c0400b670fd1e2f2104349cd3b5dcce8d9418f
+  FirebaseMessaging: 0c0ae1eb722ef0c07d10d8f3f9f56cc31d0c2776
+  GoogleMaps: 081f2547b60a1c0870a8f49166a653900e5055d5
+  Kingfisher: a18f05d3b6d37d8e3704182db63f53de6b0e0bf0
+  SocketIO-Client-Swift: c116d6dc9fd6be9c259bacfe143f8725bce7d79e
+  Starscream: fb2c4510bebf908c62bd383bcf05e673720e91fd
+  SwiftLint: c1de071d9d08c8c9f7312ec9c9f2ae5f69da4cf5
+  TensorFlowLiteSwift: 2b2fe6c8c9d5842749c3bbd4f69e361cba6f8d09
+  TensorFlowLiteC: 45a8b2a6aa18aec0a19c1e50a7a7a0d2ee4a9a28
+
+PODFILE CHECKSUM: 7d8e9af2b3c8149b4e6a3f21c0f1d2e3b4f5a6c7
+
+COCOAPODS: 1.14.3
