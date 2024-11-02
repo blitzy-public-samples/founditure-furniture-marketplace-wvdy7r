@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <!-- Requirement: iOS Native Development - Configures native iOS development workspace with Swift, SwiftUI support -->
+   <!-- Requirement: Mobile Platform Support - Defines workspace structure for native iOS application -->
+   <FileRef
+      location = "group:../Founditure.xcodeproj">
+   </FileRef>
+</Workspace>
