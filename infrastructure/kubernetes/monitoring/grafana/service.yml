@@ -1,0 +1,28 @@
+# Human Tasks:
+# 1. Verify the service port is accessible within the cluster
+# 2. Configure network policies to restrict access if needed
+# 3. Set up ingress rules if external access is required
+# 4. Review and adjust target port if custom Grafana port is used
+
+# Addresses requirements:
+# - Section 3.3.4 Infrastructure/Technology Stack: Service configuration for Grafana monitoring visualization platform
+# - Appendix D/System Health Metrics: Service exposure for metrics visualization dashboard access
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: monitoring
+  labels:
+    app: grafana
+  annotations:
+    description: "Exposes Grafana monitoring interface for system metrics visualization"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: grafana
