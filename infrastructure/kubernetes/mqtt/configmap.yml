@@ -1,0 +1,52 @@
+# Human Tasks:
+# 1. Verify MQTT broker password file exists at /mosquitto/config/password.txt
+# 2. Ensure persistence volume is mounted at /mosquitto/data/
+# 3. Review max_connections value based on expected load
+# 4. Monitor message_size_limit for potential adjustments based on usage patterns
+
+# Requirement: Event-driven messaging (1.1 System Overview/System Architecture)
+# Configures MQTT broker for real-time messaging infrastructure
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-config
+  namespace: prod
+  labels:
+    app: mqtt
+    component: messaging
+data:
+  # Requirement: Message Queue Infrastructure (3.3.2 Backend Technologies)
+  # Eclipse Mosquitto v2.0.15 configuration for MQTT message broker
+  mosquitto.conf: |
+    # Network settings
+    listener 1883
+    protocol mqtt
+
+    # Persistence configuration
+    persistence true
+    persistence_location /mosquitto/data/
+    
+    # Logging configuration
+    log_dest stdout
+    
+    # Security settings
+    allow_anonymous false
+    password_file /mosquitto/config/password.txt
+    
+    # Connection limits
+    max_connections 1000
+    max_queued_messages 1000
+    max_inflight_messages 100
+    
+    # Message settings
+    message_size_limit 10240  # 10KB limit per message
+    
+    # System maintenance intervals
+    retry_interval 20
+    sys_interval 10
+    store_clean_interval 10
+    
+    # Requirement: Real-time Features (1.2 Scope/Core System Components)
+    # WebSocket support for web clients
+    listener 9001
+    protocol websockets
