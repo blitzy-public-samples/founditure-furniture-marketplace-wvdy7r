@@ -1,0 +1,48 @@
+# Human Tasks:
+# 1. Ensure the 'logging' namespace exists before applying this configuration
+# 2. Verify network policies allow traffic to ports 9200 and 9300
+# 3. Configure DNS entries if external access is needed
+# 4. Review and adjust resource quotas for the logging namespace
+
+# Addresses requirements:
+# - Log Management (5.5.1 DevOps Tools): ELK Stack implementation for centralized log management
+# - System Monitoring (3.2.2 Backend Service Architecture): Support Services including logging infrastructure
+# - Data Storage (3.3.3 Data Storage): Search and time series data storage using Elasticsearch
+
+# Kubernetes API version: v1 (compatible with k8s 1.24+)
+apiVersion: v1
+kind: Service
+
+# Service metadata including name and namespace
+metadata:
+  name: elasticsearch
+  namespace: logging
+  labels:
+    app: elasticsearch
+    service: logging
+
+# Service specification
+spec:
+  # Headless service (clusterIP: None) for Elasticsearch cluster node discovery
+  clusterIP: None
+  
+  # Select pods with label app=elasticsearch
+  selector:
+    app: elasticsearch
+  
+  # Define service ports
+  ports:
+    # REST API port for client connections
+    - name: rest
+      port: 9200
+      targetPort: 9200
+      protocol: TCP
+    
+    # Inter-node communication port for cluster coordination
+    - name: inter-node
+      port: 9300
+      targetPort: 9300
+      protocol: TCP
+  
+  # Service type ClusterIP for internal access only
+  type: ClusterIP
