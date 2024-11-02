@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Requirement: Mobile Applications - Native Android application (Android 8.0+) with modern adaptive icon support
+Library version: android-33 (Android 13)
+
+Human Tasks:
+1. Verify the adaptive icon appearance on different Android devices (8.0+)
+2. Test icon rendering in various launcher shapes (circle, square, rounded square)
+3. Validate icon visibility against different wallpaper colors
+4. Ensure icon meets Google Play Store requirements
+5. Check icon scaling and padding in different launcher environments
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background layer using the custom background drawable -->
+    <background android:drawable="@drawable/ic_launcher_background"/>
+    
+    <!-- Foreground layer using the custom foreground drawable -->
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>
