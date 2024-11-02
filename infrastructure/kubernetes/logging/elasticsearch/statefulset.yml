@@ -1,0 +1,131 @@
+# Human Tasks:
+# 1. Ensure the 'logging' namespace exists before applying this configuration
+# 2. Configure storage class 'gp2' in your cluster or modify to use appropriate storage class
+# 3. Verify node capacity can handle resource requests/limits
+# 4. Set appropriate JVM heap size in environment variables
+# 5. Consider setting up monitoring for Elasticsearch cluster health
+
+# Addresses requirements:
+# - Log Management (5.5.1 DevOps Tools): ELK Stack implementation for centralized log management
+# - System Monitoring (3.2.2 Backend Service Architecture): Support Services including logging infrastructure
+# - Data Storage (3.3.3 Data Storage): Time Series data storage using Elasticsearch
+
+# Kubernetes API version: apps/v1 (compatible with k8s 1.24+)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: logging
+  labels:
+    app: elasticsearch
+    service: logging
+
+spec:
+  # Reference to the headless service for network identity
+  serviceName: elasticsearch
+  # Number of replicas as defined in globals
+  replicas: 3
+  
+  # Pod selector must match template labels
+  selector:
+    matchLabels:
+      app: elasticsearch
+  
+  # Template for pod creation
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      # Initialize with system settings required for Elasticsearch
+      initContainers:
+        - name: init-sysctl
+          image: busybox:1.32
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+      
+      containers:
+        - name: elasticsearch
+          # Elasticsearch version 7.17 as specified in external dependencies
+          image: elasticsearch:7.17
+          
+          # Environment configuration for Elasticsearch
+          env:
+            - name: cluster.name
+              value: "logging-cluster"
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: discovery.seed_hosts
+              value: "elasticsearch-0.elasticsearch.logging.svc.cluster.local,elasticsearch-1.elasticsearch.logging.svc.cluster.local,elasticsearch-2.elasticsearch.logging.svc.cluster.local"
+            - name: cluster.initial_master_nodes
+              value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+            - name: ES_JAVA_OPTS
+              value: "-Xms1g -Xmx1g"
+            - name: bootstrap.memory_lock
+              value: "true"
+          
+          # Port configuration matching service definition
+          ports:
+            - name: rest
+              containerPort: 9200
+              protocol: TCP
+            - name: inter-node
+              containerPort: 9300
+              protocol: TCP
+          
+          # Resource limits as specified in globals
+          resources:
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+          
+          # Volume mounts for persistent storage
+          volumeMounts:
+            - name: elasticsearch-data
+              mountPath: /usr/share/elasticsearch/data
+          
+          # Readiness probe to check cluster health
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: rest
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          
+          # Liveness probe to ensure container is responsive
+          livenessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: rest
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          
+          # Security context for Elasticsearch requirements
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+                - SYS_RESOURCE
+      
+      # Pod security context
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+  
+  # Volume claim templates for persistent storage
+  volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "gp2"
+        resources:
+          requests:
+            # Storage size as specified in globals
+            storage: 100Gi
