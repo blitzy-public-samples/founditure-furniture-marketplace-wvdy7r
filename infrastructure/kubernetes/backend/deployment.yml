@@ -1,0 +1,145 @@
+# Human Tasks:
+# 1. Verify container image tag before deployment
+# 2. Configure node affinity rules based on cluster topology
+# 3. Set up network policies for pod communication
+# 4. Review and adjust resource quotas based on usage patterns
+# 5. Configure pod disruption budget for high availability
+# 6. Set up monitoring alerts for resource utilization
+
+# Kubernetes v1.24+
+# Requirement: Container Orchestration - Containerized services for scalability using Kubernetes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: founditure-backend
+  namespace: prod
+  labels:
+    app: founditure-backend
+    tier: backend
+  annotations:
+    # Enable Prometheus metrics scraping
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+    # Deployment description
+    description: "Founditure backend service deployment"
+spec:
+  # Requirement: High Availability - Multi-replica deployment
+  replicas: 3
+  # Requirement: High Availability - Rolling updates for zero-downtime deployments
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: founditure-backend
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: founditure-backend
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: founditure-backend
+          # Requirement: Backend Runtime - Node.js 18 LTS runtime environment
+          image: founditure/backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+            - containerPort: 8080
+              name: websocket
+              protocol: TCP
+          # Resource allocation for container
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          # Requirement: High Availability - Health checks for reliability
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          # Environment configuration
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+            - name: WS_PORT
+              value: "8080"
+          # Mount configuration and secrets
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: secrets
+              mountPath: /app/secrets
+              readOnly: true
+          # Security context for container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      # Volume definitions
+      volumes:
+        # Mount ConfigMap for non-sensitive configuration
+        - name: config
+          configMap:
+            name: backend-config
+        # Mount Secrets for sensitive data
+        - name: secrets
+          secret:
+            secretName: backend-secrets
+            defaultMode: 0400
+      # Pod scheduling and termination
+      terminationGracePeriodSeconds: 60
+      # Affinity rules for pod scheduling
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - founditure-backend
+                topologyKey: kubernetes.io/hostname
+      # Node selection
+      nodeSelector:
+        type: application
+      # Tolerations for node taints
+      tolerations:
+        - key: "node-role.kubernetes.io/application"
+          operator: "Exists"
+          effect: "NoSchedule"
