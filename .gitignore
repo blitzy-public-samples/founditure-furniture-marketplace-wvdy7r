@@ -1,0 +1,76 @@
+# Human Tasks:
+# 1. Verify that any additional environment-specific files for your setup are included
+# 2. Ensure any custom IDE configurations are properly ignored
+# 3. Review and add any additional sensitive files specific to your development setup
+
+# Node.js
+# REQ: Development Environment Configuration - Node.js dependencies and build artifacts
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+dist/
+coverage/
+
+# Environment Files
+# REQ: Security Configuration - Prevent exposure of sensitive configuration
+.env
+.env.*
+
+# iOS
+# REQ: Development Environment Configuration - iOS build and dependency files
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+.DS_Store
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+*.xcuserstate
+Pods/
+
+# Android
+# REQ: Development Environment Configuration - Android build and IDE files
+*.iml
+.gradle/
+local.properties
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.hprof
+
+# Infrastructure
+# REQ: Security Configuration - Prevent exposure of infrastructure secrets and state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+override.tf
+override.tf.json
+.terraformrc
+terraform.rc
+kubeconfig
+*.pem
+
+# IDE and Editors
+# REQ: Development Environment Configuration - IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System Files
+# REQ: Development Environment Configuration - OS-specific files
+.DS_Store
+Thumbs.db
