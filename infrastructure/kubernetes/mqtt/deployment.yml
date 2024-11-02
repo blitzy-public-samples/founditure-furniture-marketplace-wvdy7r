@@ -1,0 +1,180 @@
+# Human Tasks:
+# 1. Ensure PersistentVolumeClaim 'mqtt-data-pvc' is created before deploying
+# 2. Verify network policies allow MQTT traffic on ports 1883 and 9001
+# 3. Monitor resource usage and adjust limits if needed
+# 4. Configure backup strategy for MQTT data volume
+# 5. Review pod anti-affinity rules for production deployment
+
+# Requirement: Event-driven messaging (1.1 System Overview/System Architecture)
+# Kubernetes deployment for MQTT message broker that handles real-time messaging
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-broker
+  namespace: default
+  labels:
+    app: mqtt
+    component: messaging
+  annotations:
+    description: "MQTT broker for real-time event-driven communication"
+spec:
+  # Requirement: Message Queue Infrastructure (3.3.2 Backend Technologies)
+  # High availability configuration with 3 replicas
+  replicas: 3
+  
+  selector:
+    matchLabels:
+      app: mqtt
+      component: messaging
+  
+  template:
+    metadata:
+      labels:
+        app: mqtt
+        component: messaging
+      annotations:
+        # Enable Prometheus metrics scraping
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9001"
+    spec:
+      # Pod anti-affinity to spread replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - mqtt
+              topologyKey: "kubernetes.io/hostname"
+      
+      containers:
+      # Requirement: Real-time Features (1.2 Scope/Core System Components)
+      - name: mqtt-broker
+        image: eclipse-mosquitto:2.0.15  # Using specified version
+        ports:
+        - containerPort: 1883
+          name: mqtt
+          protocol: TCP
+        - containerPort: 9001
+          name: mqtt-ws
+          protocol: TCP
+        
+        # Resource limits as specified
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        
+        # Health checks
+        livenessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        
+        # Volume mounts for configuration and persistence
+        volumeMounts:
+        - name: mqtt-config
+          mountPath: /mosquitto/config
+        - name: mqtt-data
+          mountPath: /mosquitto/data
+        
+        # Environment variables
+        env:
+        - name: MQTT_PORT
+          value: "1883"
+        - name: MQTT_WS_PORT
+          value: "9001"
+        - name: MQTT_PERSISTENCE_LOCATION
+          value: "/mosquitto/data/"
+      
+      # Volumes configuration
+      volumes:
+      # ConfigMap volume for MQTT configuration
+      - name: mqtt-config
+        configMap:
+          name: mqtt-config
+      # Persistent volume for MQTT data
+      - name: mqtt-data
+        persistentVolumeClaim:
+          claimName: mqtt-data-pvc
+
+---
+# Production deployment with additional security and monitoring
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-broker
+  namespace: prod
+  labels:
+    app: mqtt
+    component: messaging
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mqtt
+      component: messaging
+      environment: production
+  template:
+    metadata:
+      labels:
+        app: mqtt
+        component: messaging
+        environment: production
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1883
+        fsGroup: 1883
+      containers:
+      - name: mqtt-broker
+        image: eclipse-mosquitto:2.0.15
+        ports:
+        - containerPort: 1883
+          name: mqtt
+        - containerPort: 9001
+          name: mqtt-ws
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        volumeMounts:
+        - name: mqtt-config
+          mountPath: /mosquitto/config
+          readOnly: true
+        - name: mqtt-data
+          mountPath: /mosquitto/data
+        livenessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: mqtt-config
+        configMap:
+          name: mqtt-config
+      - name: mqtt-data
+        persistentVolumeClaim:
+          claimName: mqtt-data-pvc-prod
