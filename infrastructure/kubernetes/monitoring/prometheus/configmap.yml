@@ -1,0 +1,154 @@
+# Human Tasks:
+# 1. Verify that all target services have /metrics endpoints exposed
+# 2. Ensure RBAC permissions are set up for Prometheus to access Kubernetes API
+# 3. Configure alertmanager deployment and service
+# 4. Set up recording rules for SLO monitoring
+# 5. Review and adjust scrape intervals based on resource usage
+
+# Addresses requirements from:
+# - Section 3.3.4: Prometheus/Grafana for monitoring and metrics collection
+# - Appendix D/System Health Metrics: Performance, reliability and security metrics
+# - Section 3.5 Scalability Architecture: Auto-scaling and performance tracking
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: server
+data:
+  prometheus.yml: |
+    # Global configuration
+    global:
+      scrape_interval: 15s     # Set the scrape interval to every 15 seconds
+      evaluation_interval: 15s  # Evaluate rules every 15 seconds
+      external_labels:
+        environment: production
+        cluster: founditure-cluster
+
+    # Alertmanager configuration
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    # Load rules once and periodically evaluate them
+    rule_files:
+      - /etc/prometheus/rules/*.rules
+
+    # Scrape configurations
+    scrape_configs:
+      # Kubernetes API servers monitoring
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      # Kubernetes nodes monitoring
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      # Kubernetes pods monitoring
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      # Founditure backend service monitoring
+      - job_name: 'founditure-backend'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['backend-service:8080']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+
+      # Redis metrics monitoring
+      - job_name: 'redis-metrics'
+        static_configs:
+          - targets: ['redis-service:9121']
+        metrics_path: '/metrics'
+
+      # MQTT metrics monitoring
+      - job_name: 'mqtt-metrics'
+        static_configs:
+          - targets: ['mqtt-service:9141']
+        metrics_path: '/metrics'
+
+      # Prometheus self-monitoring
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+    # Recording rules for performance metrics
+    recording_rules:
+      groups:
+        - name: founditure_slos
+          rules:
+            - record: job:request_latency_seconds:mean5m
+              expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])
+            - record: job:request_errors_total:rate5m
+              expr: rate(http_requests_total{status=~"5.."}[5m])
+            - record: job:request_success_ratio:5m
+              expr: rate(http_requests_total{status=~"2.."}[5m]) / rate(http_requests_total[5m])
+
+    # Alert rules configuration
+    alerting_rules:
+      groups:
+        - name: founditure_alerts
+          rules:
+            - alert: HighLatency
+              expr: job:request_latency_seconds:mean5m > 2
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: High latency detected
+                description: Service latency is above 2 seconds for 5 minutes
+            - alert: HighErrorRate
+              expr: job:request_errors_total:rate5m > 0.1
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: High error rate detected
+                description: Service error rate is above 10% for 5 minutes
