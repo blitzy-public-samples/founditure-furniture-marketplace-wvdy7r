@@ -1,0 +1,111 @@
+# Human Tasks:
+# 1. Ensure the 'founditure' namespace exists before applying this manifest
+# 2. Verify cluster has sufficient resources for Redis pods (500m CPU, 1Gi memory per pod)
+# 3. Confirm storage class 'standard' exists and supports the required storage capacity
+# 4. Review Redis configuration in configmap for production readiness
+# 5. Set up monitoring for Redis cluster health and performance
+
+# Redis version: 6.2-alpine
+
+# Addresses requirements from:
+# - Cache Layer (3.3.2): Redis cache implementation for backend services
+# - Scalability Architecture (3.5): Redis cluster with primary-replica topology
+# - Data Security (7.2.1): Secure Redis deployment with encryption and access controls
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: founditure
+  labels:
+    app: redis
+    component: cache
+spec:
+  # Associates with the headless service for network identity
+  serviceName: redis-headless
+  # Number of Redis replicas for high availability
+  replicas: 3
+  # Pod selector matching labels
+  selector:
+    matchLabels:
+      app: redis
+      component: cache
+  # Template for Redis pods
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+    spec:
+      # Security context for Redis container
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+        - name: redis
+          image: redis:6.2-alpine
+          # Probes for container health monitoring
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Redis port configuration
+          ports:
+            - containerPort: 6379
+              name: redis
+          # Resource requests and limits
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          # Volume mounts for Redis data and configuration
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: redis-config
+              mountPath: /etc/redis
+          # Command to start Redis with configuration
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+          # Environment variables
+          env:
+            - name: MASTER
+              value: "true"
+            - name: REDIS_REPLICATION_MODE
+              value: "master"
+      # Volumes configuration
+      volumes:
+        - name: redis-config
+          configMap:
+            name: redis-config
+            items:
+              - key: redis.conf
+                path: redis.conf
+  # Persistent volume claims template
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: "10Gi"
+        storageClassName: standard
+  # Update strategy for the StatefulSet
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
