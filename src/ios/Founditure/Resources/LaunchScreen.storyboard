@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="LaunchScreenViewController">
+    <!-- HUMAN TASKS:
+    1. Verify AppIcon asset is properly configured in Assets.xcassets
+    2. Ensure launch screen displays correctly on all supported iOS devices
+    3. Test dark mode appearance in simulator/device
+    4. Verify accessibility labels are properly read by VoiceOver
+    5. Test dynamic type scaling for app name label -->
+    
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21701"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="launch-screen-scene">
+            <objects>
+                <viewController id="LaunchScreenViewController" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="containerView">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="AppIcon" translatesAutoresizingMaskIntoConstraints="NO" id="appIconImageView">
+                                <rect key="frame" x="136.66666666666666" y="366" width="120" height="120"/>
+                                <accessibility key="accessibilityConfiguration">
+                                    <accessibilityTraits key="traits" image="YES"/>
+                                    <string key="label">Founditure App Icon</string>
+                                </accessibility>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="120" id="appIconWidth"/>
+                                    <constraint firstAttribute="height" constant="120" id="appIconHeight"/>
+                                </constraints>
+                            </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Founditure" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="appNameLabel">
+                                <rect key="frame" x="20" y="502" width="353" height="29"/>
+                                <accessibility key="accessibilityConfiguration">
+                                    <accessibilityTraits key="traits" header="YES"/>
+                                    <string key="label">Founditure</string>
+                                </accessibility>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="24"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="safeArea"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="appIconImageView" firstAttribute="centerX" secondItem="containerView" secondAttribute="centerX" id="centerX"/>
+                            <constraint firstItem="appIconImageView" firstAttribute="centerY" secondItem="containerView" secondAttribute="centerY" id="centerY"/>
+                            <constraint firstItem="appNameLabel" firstAttribute="centerX" secondItem="containerView" secondAttribute="centerX" id="labelCenterX"/>
+                            <constraint firstItem="appNameLabel" firstAttribute="top" secondItem="appIconImageView" secondAttribute="bottom" constant="16" id="labelTopSpace"/>
+                            <constraint firstItem="appNameLabel" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="safeArea" secondAttribute="leading" constant="20" id="labelLeading"/>
+                            <constraint firstItem="safeArea" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="appNameLabel" secondAttribute="trailing" constant="20" id="labelTrailing"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="launch-screen-first-responder" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="0.0" y="0.0"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="AppIcon" width="1024" height="1024"/>
+        <systemColor name="systemBackgroundColor">
+            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+    </resources>
+</document>
