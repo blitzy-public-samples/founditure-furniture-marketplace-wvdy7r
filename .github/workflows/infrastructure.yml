@@ -1,0 +1,188 @@
+# Requirement: CI/CD Pipeline - Infrastructure deployment automation through GitHub Actions
+name: Infrastructure Deployment
+
+# Requirement: Cloud Infrastructure Deployment - Automated deployment triggers
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/terraform/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+# Requirement: Environment Management - Global environment variables
+env:
+  TF_WORKSPACE: ${{ github.event.inputs.environment || 'dev' }}
+  AWS_REGION: us-west-2
+
+# Requirement: Infrastructure/8.1 Deployment Environment - Terraform plan job
+jobs:
+  terraform_plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      # Requirement: Cloud Infrastructure Deployment - Source code checkout
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Requirement: Cloud Infrastructure Deployment - Terraform setup
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      # Requirement: Cloud Infrastructure Deployment - AWS authentication
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Requirement: Cloud Infrastructure Deployment - Terraform initialization
+      - name: Initialize Terraform
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=founditure-terraform-state-${{ env.TF_WORKSPACE }}" \
+            -backend-config="key=${{ env.TF_WORKSPACE }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      # Requirement: Cloud Infrastructure Deployment - Code quality check
+      - name: Check Terraform Format
+        working-directory: infrastructure/terraform
+        run: terraform fmt -check -recursive
+        continue-on-error: false
+
+      # Requirement: Cloud Infrastructure Deployment - Configuration validation
+      - name: Validate Terraform Configuration
+        working-directory: infrastructure/terraform
+        run: terraform validate
+        continue-on-error: false
+
+      # Requirement: Cloud Infrastructure Deployment - Infrastructure plan
+      - name: Generate Terraform Plan
+        working-directory: infrastructure/terraform
+        run: |
+          terraform plan \
+            -var-file="environments/${{ env.TF_WORKSPACE }}/terraform.tfvars" \
+            -out=tfplan
+        continue-on-error: false
+
+      # Requirement: Cloud Infrastructure Deployment - Plan artifact
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: infrastructure/terraform/tfplan
+          retention-days: 5
+
+  # Requirement: Infrastructure/8.1 Deployment Environment - Terraform apply job
+  terraform_apply:
+    name: Terraform Apply
+    needs: terraform_plan
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+
+    # Requirement: Environment Management - Environment protection rules
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+      # Requirement: Cloud Infrastructure Deployment - Source code checkout
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Requirement: Cloud Infrastructure Deployment - Terraform setup
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      # Requirement: Cloud Infrastructure Deployment - AWS authentication
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Requirement: Cloud Infrastructure Deployment - Terraform initialization
+      - name: Initialize Terraform
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=founditure-terraform-state-${{ env.TF_WORKSPACE }}" \
+            -backend-config="key=${{ env.TF_WORKSPACE }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      # Requirement: Cloud Infrastructure Deployment - Plan retrieval
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: infrastructure/terraform
+
+      # Requirement: Cloud Infrastructure Deployment - Infrastructure application
+      - name: Apply Terraform Changes
+        working-directory: infrastructure/terraform
+        run: terraform apply -auto-approve tfplan
+
+      # Requirement: Cloud Infrastructure Deployment - Deployment status
+      - name: Update Deployment Status
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const message = `Infrastructure deployment to ${process.env.TF_WORKSPACE} completed successfully`;
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              description: message,
+              context: 'Terraform Apply'
+            });
+
+# Requirement: Security Controls - Error handling and notifications
+on_failure:
+  steps:
+    - name: Notify Deployment Failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const message = `Infrastructure deployment to ${process.env.TF_WORKSPACE} failed`;
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: 'failure',
+            description: message,
+            context: 'Terraform Apply'
+          });
