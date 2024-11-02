@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Human Tasks:
+1. Ensure this file is referenced in AndroidManifest.xml using android:networkSecurityConfig attribute
+2. Update pin-set expiration date before 2024-12-31
+3. Verify system CA certificates are properly installed on development devices
+4. Configure debug keystores for development environments -->
+
+<!-- Implements secure network communication policies for API Gateway and service interactions
+     Requirement: 3.6 Security Architecture - Secure Client-Server Communication -->
+<network-security-config>
+    <!-- Base configuration applied to all network connections -->
+    <base-config cleartextTrafficPermitted="false">
+        <!-- Enforces TLS 1.3 for data in transit security
+             Requirement: 7.2.1 Encryption Standards - Data Encryption -->
+        <trust-anchors>
+            <!-- Only trust system-provided certificates for production -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific configuration for API endpoints -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Include all subdomains of the API domain -->
+        <domain includeSubdomains="true">api.founditure.com</domain>
+        
+        <trust-anchors>
+            <!-- Trust system certificates for API communication -->
+            <certificates src="system" />
+        </trust-anchors>
+
+        <!-- Certificate pinning configuration -->
+        <pin-set expiration="2024-12-31">
+            <!-- Note: Add your certificate pins here in production
+                 Example format:
+                 <pin digest="SHA-256">your_base64_encoded_pin_here</pin>
+            -->
+        </pin-set>
+    </domain-config>
+
+    <!-- Debug-only configuration, automatically disabled in release builds -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Allow user-installed certificates for debugging -->
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
