@@ -1,0 +1,31 @@
+# IDE files
+*.iml
+.idea/
+.gradle/
+local.properties
+
+# OS-specific files
+.DS_Store
+
+# Build outputs
+build/
+/app/release/
+/app/debug/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Application packages
+*.apk
+*.aab
+
+# Security-sensitive files
+*.keystore
+*.jks
+google-services.json
+
+# Build metadata
+output.json
+
+# Log files
+*.log
