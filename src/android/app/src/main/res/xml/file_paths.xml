@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Human Tasks:
+1. Ensure the application's AndroidManifest.xml includes the FileProvider configuration with the correct authority
+2. Verify that the directories specified in the paths are created during app initialization
+3. Configure appropriate storage permissions in AndroidManifest.xml (READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE)
+-->
+
+<!-- 
+FileProvider configuration for secure file sharing in Founditure app
+Using androidx.core.content.FileProvider version 1.9.0
+Addresses requirements:
+- Camera Integration (4.1.1 Mobile Application Components)
+- Furniture Documentation (1.2 Scope/Included Features)
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internal app-specific directory for storing furniture images -->
+    <files-path
+        name="furniture_images"
+        path="images/" />
+
+    <!-- Temporary cache directory for processing images -->
+    <cache-path
+        name="temp_images"
+        path="temp/" />
+
+    <!-- External storage directory for saved furniture images -->
+    <external-path
+        name="external_files"
+        path="Pictures/Founditure/" />
+</paths>
