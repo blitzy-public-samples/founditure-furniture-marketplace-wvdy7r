@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21754" systemVersion="22E261" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <!-- HUMAN TASKS:
+    1. Configure Core Data migration strategy for future schema updates
+    2. Set up appropriate data encryption for sensitive attributes
+    3. Configure Core Data performance monitoring
+    4. Review indexing strategy for optimal query performance
+    5. Set up Core Data crash recovery mechanisms -->
+    
+    <!-- Requirement: Local data persistence - User entity for offline storage -->
+    <entity name="UserEntity" representedClassName="UserEntity" syncable="YES">
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="email" attributeType="String"/>
+        <attribute name="fullName" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="isLocationEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isPushEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="lastLoginAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="phoneNumber" optional="YES" attributeType="String"/>
+        <attribute name="privacyLevel" attributeType="String"/>
+        <attribute name="profileImageUrl" optional="YES" attributeType="String"/>
+        <attribute name="role" attributeType="String"/>
+        <attribute name="status" attributeType="String"/>
+        <relationship name="furniture" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="FurnitureEntity" inverseName="user" inverseEntity="FurnitureEntity"/>
+        <relationship name="points" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="PointsEntity" inverseName="user" inverseEntity="PointsEntity"/>
+        <relationship name="receivedMessages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MessageEntity" inverseName="receiver" inverseEntity="MessageEntity"/>
+        <relationship name="sentMessages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MessageEntity" inverseName="sender" inverseEntity="MessageEntity"/>
+        <fetchIndex name="email_index">
+            <fetchIndexElement property="email" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="id_index">
+            <fetchIndexElement property="id" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="email"/>
+            </uniquenessConstraint>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    
+    <!-- Requirement: Local data persistence - Furniture entity for offline storage -->
+    <entity name="FurnitureEntity" representedClassName="FurnitureEntity" syncable="YES">
+        <attribute name="aiMetadataData" attributeType="Binary"/>
+        <attribute name="category" attributeType="String"/>
+        <attribute name="condition" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="description_" attributeType="String"/>
+        <attribute name="dimensionsData" attributeType="Binary"/>
+        <attribute name="expiresAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="imageUrls" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer" customClassName="NSArray"/>
+        <attribute name="isAvailable" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="material" attributeType="String"/>
+        <attribute name="thumbnailUrl" optional="YES" attributeType="String"/>
+        <attribute name="title" attributeType="String"/>
+        <relationship name="location" maxCount="1" deletionRule="Cascade" destinationEntity="LocationEntity" inverseName="furniture" inverseEntity="LocationEntity"/>
+        <relationship name="messages" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="MessageEntity" inverseName="furniture" inverseEntity="MessageEntity"/>
+        <relationship name="user" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="furniture" inverseEntity="UserEntity"/>
+        <fetchIndex name="category_index">
+            <fetchIndexElement property="category" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="id_index">
+            <fetchIndexElement property="id" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
+    
+    <!-- Requirement: Local data persistence - Message entity for offline storage -->
+    <entity name="MessageEntity" representedClassName="MessageEntity" syncable="YES">
+        <attribute name="content" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isRead" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="messageType" attributeType="String"/>
+        <attribute name="metadataData" attributeType="Binary"/>
+        <attribute name="readAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="furniture" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FurnitureEntity" inverseName="messages" inverseEntity="FurnitureEntity"/>
+        <relationship name="receiver" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="receivedMessages" inverseEntity="UserEntity"/>
+        <relationship name="sender" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="sentMessages" inverseEntity="UserEntity"/>
+        <fetchIndex name="created_at_index">
+            <fetchIndexElement property="createdAt" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="id_index">
+            <fetchIndexElement property="id" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
+    
+    <!-- Requirement: Local data persistence - Location entity for offline storage -->
+    <entity name="LocationEntity" representedClassName="LocationEntity" syncable="YES">
+        <attribute name="address" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="latitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="privacyLevel" attributeType="String"/>
+        <attribute name="recordedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="furniture" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FurnitureEntity" inverseName="location" inverseEntity="FurnitureEntity"/>
+        <fetchIndex name="coordinates_index">
+            <fetchIndexElement property="latitude" type="Binary" order="ascending"/>
+            <fetchIndexElement property="longitude" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="id_index">
+            <fetchIndexElement property="id" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
+    
+    <!-- Requirement: Local data persistence - Points entity for offline storage -->
+    <entity name="PointsEntity" representedClassName="PointsEntity" syncable="YES">
+        <attribute name="achievements" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer" customClassName="NSArray"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="level" attributeType="Integer 32" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="totalPoints" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="user" maxCount="1" deletionRule="Cascade" destinationEntity="UserEntity" inverseName="points" inverseEntity="UserEntity"/>
+        <fetchIndex name="id_index">
+            <fetchIndexElement property="id" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
+    
+    <!-- Core Data configuration settings -->
+    <configuration name="Default">
+        <memberEntity name="UserEntity"/>
+        <memberEntity name="FurnitureEntity"/>
+        <memberEntity name="MessageEntity"/>
+        <memberEntity name="LocationEntity"/>
+        <memberEntity name="PointsEntity"/>
+    </configuration>
+    
+    <!-- Core Data model elements -->
+    <elements>
+        <element name="UserEntity" positionX="-63" positionY="-18" width="128" height="299"/>
+        <element name="FurnitureEntity" positionX="160" positionY="192" width="128" height="284"/>
+        <element name="MessageEntity" positionX="279" positionY="378" width="128" height="224"/>
+        <element name="LocationEntity" positionX="18" positionY="63" width="128" height="149"/>
+        <element name="PointsEntity" positionX="-54" positionY="144" width="128" height="119"/>
+    </elements>
+</model>
