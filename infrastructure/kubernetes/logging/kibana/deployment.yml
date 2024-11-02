@@ -1,0 +1,83 @@
+# Human Tasks:
+# 1. Ensure the 'logging' namespace exists before applying this configuration
+# 2. Verify Elasticsearch service is running and accessible
+# 3. Configure DNS entries if using custom SERVER_NAME
+# 4. Review and adjust resource quotas if needed
+# 5. Verify network policies allow traffic on port 5601
+
+# Addresses requirements:
+# - Log Management (5.5.1 DevOps Tools): ELK Stack implementation for centralized log management
+# - System Monitoring (3.2.2 Backend Service Architecture): Support Services including logging infrastructure
+# - Monitoring Infrastructure (3.3.4 Infrastructure/Logging): ELK Stack for log aggregation and visualization
+
+# Kubernetes API version: apps/v1 (compatible with k8s 1.24+)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+  labels:
+    app: kibana
+    service: logging
+
+spec:
+  # Single replica as Kibana doesn't require scaling for typical deployments
+  replicas: 1
+  
+  # Pod selector matching template labels
+  selector:
+    matchLabels:
+      app: kibana
+  
+  # Pod template specification
+  template:
+    metadata:
+      labels:
+        app: kibana
+    
+    spec:
+      containers:
+        - name: kibana
+          # Using official Kibana image version 7.17.0
+          image: docker.elastic.co/kibana/kibana:7.17.0
+          
+          # Container ports
+          ports:
+            - containerPort: 5601
+              name: http
+              protocol: TCP
+          
+          # Environment configuration
+          env:
+            # Connect to Elasticsearch service using internal DNS
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200"
+            
+            # Set Kibana server name
+            - name: SERVER_NAME
+              value: "kibana.founditure.local"
+          
+          # Resource limits and requests
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+          
+          # Liveness probe to check if Kibana is responding
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+          
+          # Readiness probe to check if Kibana is ready to serve traffic
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
