@@ -1,0 +1,36 @@
+// Requirement: Native Android Development (1.1 System Overview/Core System Components/Mobile Applications)
+// Configure native Android application project structure and modules
+pluginManagement {
+    repositories {
+        google() // Google's Maven repository
+        mavenCentral() // Maven Central repository
+        gradlePluginPortal() // Gradle Plugin Portal
+    }
+    // Requirement: Mobile Architecture (3.2.1 Mobile Client Architecture)
+    // Configure plugin resolution strategy for consistent build tools
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'com.android.application') {
+                useModule("com.android.tools.build:gradle:8.1.0")
+            }
+        }
+    }
+}
+
+// Requirement: Mobile Architecture (3.2.1 Mobile Client Architecture)
+// Configure dependency repositories and resolution strategy
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google() // Google's Maven repository for Android dependencies
+        mavenCentral() // Maven Central for open source dependencies
+    }
+}
+
+// Requirement: Native Android Development (1.1 System Overview/Core System Components/Mobile Applications)
+// Set root project name for the Founditure Android application
+rootProject.name = "founditure"
+
+// Requirement: Mobile Architecture (3.2.1 Mobile Client Architecture)
+// Include the main application module
+include ':app'
