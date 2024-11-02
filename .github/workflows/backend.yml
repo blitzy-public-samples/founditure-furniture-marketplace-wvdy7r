@@ -1,0 +1,141 @@
+# Requirement: CI/CD Pipeline (8.5 CI/CD Pipeline)
+name: Backend CI/CD
+
+# Requirement: Backend Runtime Environment (5.1 Programming Languages)
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/backend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/backend/**'
+
+env:
+  NODE_VERSION: '18'
+  NODE_ENV: production
+  ECR_REPOSITORY: founditure-backend
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Run linting
+        working-directory: src/backend
+        run: npm run lint
+      
+      - name: Run type checking
+        working-directory: src/backend
+        run: npm run typecheck
+      
+      - name: Run tests
+        working-directory: src/backend
+        run: npm test
+
+  build:
+    name: Build and Push Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/backend
+          push: true
+          tags: |
+            ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            NODE_ENV=production
+
+  deploy:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Configure kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+      
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/founditure-backend \
+            backend=${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+            --namespace production
+      
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/founditure-backend \
+            --namespace production \
+            --timeout=300s
+      
+      - name: Clean up
+        if: always()
+        run: rm -f kubeconfig
+
+# Requirement: Container Orchestration (3.3.4 Infrastructure)
+# The workflow implements containerized deployment to Kubernetes cluster
+# by building a Docker image and deploying it to Amazon EKS
+
+# Requirement: Backend Runtime Environment (5.1 Programming Languages)
+# The workflow enforces Node.js 18 LTS runtime environment through
+# node-version configuration in the setup-node action
+
+# Requirement: CI/CD Pipeline (8.5 CI/CD Pipeline)
+# The workflow automates build, test, and deployment processes by:
+# 1. Running tests and linting in the test job
+# 2. Building and pushing Docker image in the build job
+# 3. Deploying to Kubernetes in the deploy job
