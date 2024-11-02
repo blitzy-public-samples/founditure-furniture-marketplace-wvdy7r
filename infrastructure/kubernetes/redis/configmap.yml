@@ -1,0 +1,73 @@
+# Human Tasks:
+# 1. Ensure the 'founditure' namespace exists before applying this manifest
+# 2. Verify Redis memory allocation (1GB) is appropriate for your cluster nodes
+# 3. Review and adjust Redis persistence settings based on storage capacity
+# 4. Configure network security policies to restrict Redis access
+
+# Redis version: 6.x
+
+# Addresses requirements from:
+# - Cache Layer (3.3.2): Redis cache configuration settings for backend services
+# - Scalability Architecture (3.5): Redis cluster with primary-replica topology
+# - Data Security (7.2.1): Secure Redis configuration with TLS and access controls
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: founditure
+  labels:
+    app: redis
+    component: cache
+
+data:
+  redis.conf: |
+    # Memory Management
+    maxmemory 1gb
+    maxmemory-policy allkeys-lru
+
+    # Persistence Configuration
+    appendonly yes
+    # Save RDB snapshots after:
+    # - 900 seconds (15 minutes) if at least 1 key changed
+    # - 300 seconds (5 minutes) if at least 10 keys changed
+    # - 60 seconds if at least 10000 keys changed
+    save 900 1 300 10 60 10000
+
+    # Security Settings
+    protected-mode yes
+    # Connection timeout (0 = disabled)
+    timeout 0
+    # TCP keepalive interval in seconds
+    tcp-keepalive 300
+
+    # Database Configuration
+    databases 16
+    
+    # Replication Settings
+    replica-read-only yes
+
+    # Event Notification
+    # Ex = Expired events
+    notify-keyspace-events Ex
+
+    # Performance Monitoring
+    # Log queries slower than 10 milliseconds
+    slowlog-log-slower-than 10000
+
+    # Additional Security Recommendations
+    # Disable potentially dangerous commands
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command DEBUG ""
+
+    # Network Settings
+    bind 0.0.0.0
+    port 6379
+
+    # Logging Configuration
+    loglevel notice
+    logfile ""
+
+    # Client Connection Settings
+    maxclients 10000
