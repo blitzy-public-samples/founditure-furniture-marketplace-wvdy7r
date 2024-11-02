@@ -1,0 +1,32 @@
+# Human Tasks:
+# 1. Ensure the prometheus-server deployment is running in the monitoring namespace
+# 2. Verify that the prometheus-service can be accessed by Grafana for visualization
+# 3. Configure network policies to allow only authorized services to access prometheus-service
+# 4. Set up alerting rules in Prometheus for system health monitoring
+
+# Addresses requirements from:
+# - Section 3.3.4: Prometheus/Grafana for system monitoring and metrics collection
+# - Appendix D/System Health Metrics: Service configuration for metrics collection
+# - Section 3.5 Scalability Architecture: Metrics collection for scalability monitoring
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: server
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '9090'
+spec:
+  selector:
+    app: prometheus
+    component: server
+  ports:
+    - port: 9090
+      targetPort: 9090
+      protocol: TCP
+      name: http
+  type: ClusterIP
