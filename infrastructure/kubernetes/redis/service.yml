@@ -1,0 +1,38 @@
+# Human Tasks:
+# 1. Ensure the 'founditure' namespace exists before applying this manifest
+# 2. Verify that Redis StatefulSet pods are labeled with app=redis and component=cache
+# 3. Configure network policies to restrict access to this service if required
+
+# Addresses requirements from:
+# - 3.3.2 Backend Technologies/Cache: Redis cache service configuration
+# - 3.5 Scalability Architecture/Cache Layer: Redis cluster with primary-replica topology
+
+# Kubernetes API version v1 for Service resources
+apiVersion: v1
+kind: Service
+
+# Service metadata with name and namespace
+metadata:
+  name: redis-headless
+  namespace: founditure
+  labels:
+    app: redis
+    component: cache
+
+# Service specification
+spec:
+  # Headless service configuration (clusterIP: None) for StatefulSet DNS-based discovery
+  # This enables stable network identities for each Redis pod in the cluster
+  clusterIP: None
+  
+  # Port configuration for Redis
+  ports:
+    - port: 6379          # Service port
+      targetPort: 6379    # Container port
+      name: redis         # Port name for reference
+  
+  # Pod selector for service endpoints
+  # Matches pods with labels app=redis and component=cache
+  selector:
+    app: redis
+    component: cache
