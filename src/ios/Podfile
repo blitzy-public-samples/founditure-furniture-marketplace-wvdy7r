@@ -1,0 +1,88 @@
+# Minimum iOS deployment target
+platform :ios, '14.0'
+
+# Suppress pod warning messages
+inhibit_all_warnings!
+
+# Enable Swift framework support
+use_frameworks!
+
+target 'Founditure' do
+  # Core Firebase services for authentication and analytics
+  # Firebase/Core v10.0+ - Required for base Firebase functionality
+  pod 'Firebase/Core', '~> 10.0'
+  
+  # Firebase authentication services
+  # Firebase/Auth v10.0+ - User authentication and management
+  pod 'Firebase/Auth', '~> 10.0'
+  
+  # Push notification handling
+  # Firebase/Messaging v10.0+ - Real-time push notifications
+  pod 'Firebase/Messaging', '~> 10.0'
+  
+  # User analytics and tracking
+  # Firebase/Analytics v10.0+ - User behavior analytics
+  pod 'Firebase/Analytics', '~> 10.0'
+  
+  # Real-time WebSocket communication
+  # Socket.IO-Client-Swift v16.0+ - WebSocket-based messaging
+  pod 'Socket.IO-Client-Swift', '~> 16.0'
+  
+  # HTTP networking and API requests
+  # Alamofire v5.0+ - Modern networking library
+  pod 'Alamofire', '~> 5.0'
+  
+  # Asynchronous image loading and caching
+  # SDWebImage v5.0+ - Efficient image handling
+  pod 'SDWebImage', '~> 5.0'
+  
+  # Local data persistence and offline storage
+  # RealmSwift v10.0+ - Mobile database
+  pod 'RealmSwift', '~> 10.0'
+  
+  # Maps integration for furniture location
+  # GoogleMaps v7.0+ - Maps and location visualization
+  pod 'GoogleMaps', '~> 7.0'
+  
+  # Location search and place details
+  # GooglePlaces v7.0+ - Location services
+  pod 'GooglePlaces', '~> 7.0'
+  
+  # Error tracking and crash reporting
+  # Sentry v8.0+ - Error monitoring
+  pod 'Sentry', '~> 8.0'
+  
+  # Protocol Buffers support for data serialization
+  # SwiftProtobuf v1.0+ - Efficient data serialization
+  pod 'SwiftProtobuf', '~> 1.0'
+end
+
+# Post-installation configuration
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      # Ensure minimum deployment target
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      
+      # Enable required capabilities
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      
+      # Enable arm64 architecture for iOS simulator
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      
+      # Enable bitcode
+      config.build_settings['ENABLE_BITCODE'] = 'YES'
+      
+      # Enable recommended compiler warnings
+      config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'YES'
+      config.build_settings['GCC_WARN_UNUSED_VARIABLE'] = 'YES'
+      config.build_settings['GCC_WARN_ABOUT_RETURN_TYPE'] = 'YES_ERROR'
+      
+      # Enable Swift optimization
+      if config.name == 'Release'
+        config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
+        config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+      end
+    end
+  end
+end
