@@ -1,0 +1,137 @@
+# Human Tasks:
+# 1. Ensure the 'logging' namespace exists before applying this configuration
+# 2. Verify Elasticsearch service is accessible at elasticsearch.logging.svc.cluster.local:9200
+# 3. Configure appropriate resource limits based on node sizes and log volume
+# 4. Set up monitoring alerts for Fluentd pod restarts and buffer overflow
+# 5. Review security context and pod security policies
+
+# Addresses requirements:
+# - Log Management (5.5.1 DevOps Tools): ELK Stack implementation for centralized log management
+# - System Monitoring (3.2.2 Backend Service Architecture): Support Services including logging infrastructure
+# - Infrastructure Monitoring (8.5 CI/CD Pipeline): Logging and monitoring infrastructure deployment
+
+# Kubernetes API version: apps/v1 (compatible with k8s 1.24+)
+# Fluentd version: v1.14-1
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: logging
+  labels:
+    app: fluentd
+    service: logging
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      # Use dedicated service account for Fluentd
+      serviceAccount: fluentd
+      
+      # Allow scheduling on master nodes
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      
+      # Security context for container permissions
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      
+      containers:
+      - name: fluentd
+        image: fluent/fluentd:v1.14-1
+        
+        # Resource limits to prevent node resource exhaustion
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+        
+        # Environment variables for configuration
+        env:
+        - name: FLUENT_ELASTICSEARCH_HOST
+          value: "elasticsearch.logging.svc.cluster.local"
+        - name: FLUENT_ELASTICSEARCH_PORT
+          value: "9200"
+        - name: KUBERNETES_URL
+          value: "https://kubernetes.default.svc"
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: environment
+        - name: CLUSTER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_name
+        
+        # Volume mounts for logs and configuration
+        volumeMounts:
+        - name: config-volume
+          mountPath: /fluentd/etc
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: fluentd-buffers
+          mountPath: /var/log/fluentd-buffers
+        
+        # Liveness probe to detect Fluentd process health
+        livenessProbe:
+          exec:
+            command:
+            - ps
+            - aux
+            - '|'
+            - grep
+            - fluentd
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        
+        # Readiness probe to ensure Fluentd is ready to process logs
+        readinessProbe:
+          exec:
+            command:
+            - '/bin/bash'
+            - '-c'
+            - '[[ -e /fluentd/etc/fluent.conf ]]'
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      
+      # Volumes for configuration and log access
+      volumes:
+      - name: config-volume
+        configMap:
+          name: fluentd-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: fluentd-buffers
+        emptyDir: {}
+      
+      # Node affinity to ensure proper scheduling
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      
+      # Termination grace period for clean shutdown
+      terminationGracePeriodSeconds: 30
