@@ -1,0 +1,137 @@
+// Top-level build file for the Founditure Android application
+// Gradle version compatibility: 8.1.0
+
+// Human Tasks:
+// 1. Ensure Android Studio is updated to latest version for Gradle 8.1.0 compatibility
+// 2. Configure local.properties with Android SDK path
+// 3. Set up signing keys for release builds
+// 4. Configure Firebase project and add google-services.json
+// 5. Review and adjust JVM memory settings in gradle.properties if needed
+
+// Build script configuration
+buildscript {
+    // Requirement: Technology Stack (3.3.1 Client Technologies)
+    // Defining global version constants for build dependencies
+    ext {
+        kotlin_version = '1.9.0'
+        compose_version = '1.5.0'
+        coroutines_version = '1.7.3'
+        retrofit_version = '2.9.0'
+        room_version = '2.5.2'
+        hilt_version = '2.48'
+        min_sdk = 26
+        target_sdk = 34
+        compile_sdk = 34
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    // Requirement: Native Android Development (1.1 System Overview)
+    dependencies {
+        // Android Gradle Plugin v8.1.0
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        
+        // Kotlin Gradle Plugin v1.9.0
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlin_version}"
+        
+        // Hilt Dependency Injection Plugin v2.48
+        classpath "com.google.dagger:hilt-android-gradle-plugin:${hilt_version}"
+        
+        // Google Services Plugin v4.3.15
+        classpath 'com.google.gms:google-services:4.3.15'
+    }
+}
+
+// Requirement: Mobile Architecture (3.2.1 Mobile Client Architecture)
+// Configuration for all projects in the build
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        // Maven repository for additional dependencies
+        maven { url 'https://jitpack.io' }
+        
+        // Kotlin specific repositories
+        maven { url 'https://kotlin.bintray.com/kotlinx' }
+    }
+}
+
+// Clean task configuration
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
+
+// Requirement: Mobile Architecture (3.2.1 Mobile Client Architecture)
+// Global project configurations
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                compileSdkVersion compile_sdk
+
+                defaultConfig {
+                    minSdkVersion min_sdk
+                    targetSdkVersion target_sdk
+                    
+                    // Enable core library desugaring for Java 8+ features
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+
+                    // Kotlin configuration
+                    kotlinOptions {
+                        jvmTarget = '17'
+                        freeCompilerArgs += [
+                            '-opt-in=kotlin.RequiresOptIn',
+                            '-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi'
+                        ]
+                    }
+                }
+
+                // Enable BuildConfig generation
+                buildFeatures {
+                    buildConfig true
+                }
+
+                // Configure lint options
+                lintOptions {
+                    abortOnError false
+                    checkReleaseBuilds true
+                    disable 'ContentDescription', 'SmallSp'
+                }
+
+                // Configure signing configs for release builds
+                signingConfigs {
+                    // Release signing configuration to be set up in local environment
+                    if (project.hasProperty('RELEASE_STORE_FILE')) {
+                        release {
+                            storeFile file(RELEASE_STORE_FILE)
+                            storePassword RELEASE_STORE_PASSWORD
+                            keyAlias RELEASE_KEY_ALIAS
+                            keyPassword RELEASE_KEY_PASSWORD
+                        }
+                    }
+                }
+
+                // Build types configuration
+                buildTypes {
+                    release {
+                        minifyEnabled true
+                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                        if (project.hasProperty('RELEASE_STORE_FILE')) {
+                            signingConfig signingConfigs.release
+                        }
+                    }
+                    debug {
+                        applicationIdSuffix ".debug"
+                        debuggable true
+                    }
+                }
+            }
+        }
+    }
+}
