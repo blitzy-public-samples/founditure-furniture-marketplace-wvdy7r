@@ -1,0 +1,144 @@
+# Requirement: Regular security audits and vulnerability scanning (7.3 Security Protocols/7.3.3 Security Controls)
+name: Dependency Security Check
+
+# Requirement: CI/CD pipeline with automated security checks (5.5 Infrastructure Stack/5.5.1 DevOps Tools)
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/backend/package.json'
+      - 'src/backend/package-lock.json'
+      - 'src/ios/Podfile'
+      - 'src/ios/Podfile.lock'
+      - 'src/android/app/build.gradle'
+      - 'src/android/build.gradle'
+  schedule:
+    # Run weekly security audit on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+# Environment variables for tool versions
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  RUBY_VERSION: '3.2'
+
+# Requirement: Management of third-party library versions and updates (E. Integration Dependencies)
+jobs:
+  dependency_check:
+    name: Scan Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Setup Node.js environment for backend scanning
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/backend/package-lock.json
+
+      # Setup Java environment for Android scanning
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      # Setup Ruby environment for iOS CocoaPods scanning
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      # Backend dependency scanning
+      - name: Scan Backend Dependencies
+        working-directory: src/backend
+        run: |
+          npm ci
+          npm audit --json > backend-audit.json || true
+          echo "::group::Backend Vulnerabilities"
+          npm audit
+          echo "::endgroup::"
+
+      # iOS dependency scanning
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods
+          
+      - name: Scan iOS Dependencies
+        working-directory: src/ios
+        run: |
+          pod outdated > ios-audit.txt || true
+          echo "::group::iOS Outdated Dependencies"
+          cat ios-audit.txt
+          echo "::endgroup::"
+
+      # Android dependency scanning
+      - name: Grant Gradle Execute Permission
+        run: chmod +x src/android/gradlew
+
+      - name: Scan Android Dependencies
+        working-directory: src/android
+        run: |
+          ./gradlew dependencyCheckAnalyze || true
+          echo "::group::Android Dependencies Audit"
+          cat build/reports/dependency-check-report.json || true
+          echo "::endgroup::"
+
+      # Dependency review for pull requests
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: github/dependency-review-action@v3
+        with:
+          fail-on-severity: critical
+
+      # Generate consolidated report
+      - name: Generate Consolidated Report
+        run: |
+          echo "# Dependency Security Scan Results" > security-report.md
+          echo "## Backend Dependencies" >> security-report.md
+          cat src/backend/backend-audit.json >> security-report.md || echo "No backend audit results" >> security-report.md
+          echo "## iOS Dependencies" >> security-report.md
+          cat src/ios/ios-audit.txt >> security-report.md || echo "No iOS audit results" >> security-report.md
+          echo "## Android Dependencies" >> security-report.md
+          cat src/android/build/reports/dependency-check-report.json >> security-report.md || echo "No Android audit results" >> security-report.md
+
+      # Create GitHub issue for critical vulnerabilities
+      - name: Create Issue for Critical Vulnerabilities
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Critical Security Vulnerabilities Detected',
+              body: report,
+              labels: ['security', 'dependencies', 'critical']
+            });
+
+      # Upload scan results as artifact
+      - name: Upload Scan Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-scan-results
+          path: |
+            security-report.md
+            src/backend/backend-audit.json
+            src/ios/ios-audit.txt
+            src/android/build/reports/dependency-check-report.json
+          retention-days: 14
