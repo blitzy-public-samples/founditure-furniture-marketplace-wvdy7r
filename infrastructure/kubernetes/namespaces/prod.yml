@@ -1,0 +1,71 @@
+# Human Tasks:
+# 1. Ensure cluster admin privileges for applying namespace configurations
+# 2. Verify network policy compatibility with cluster CNI plugin
+# 3. Review and adjust resource quotas based on actual cluster capacity
+# 4. Configure monitoring and logging tools to respect namespace labels
+
+# Requirement: Production Environment Configuration (8.1 Deployment Environment/Environment Matrix)
+# Defines production namespace for live user traffic with auto-scaling support
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+  labels:
+    name: prod
+    environment: production
+    security-level: high
+  annotations:
+    monitoring: enabled
+    logging: enabled
+    network-policy: strict
+spec:
+  finalizers:
+    - kubernetes
+
+---
+# Requirement: Kubernetes Orchestration (8.4 Orchestration/Kubernetes Resources)
+# Defines resource quotas for production workload management
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod-quota
+  namespace: prod
+spec:
+  hard:
+    # CPU quotas for auto-scaling support (2-20 nodes)
+    requests.cpu: "20"
+    limits.cpu: "40"
+    # Memory quotas for production workloads
+    requests.memory: 40Gi
+    limits.memory: 80Gi
+    # Workload limits
+    pods: "100"
+    services: "50"
+    persistentvolumeclaims: "30"
+    # Configuration object limits
+    secrets: "100"
+    configmaps: "100"
+
+---
+# Requirement: Production Environment Configuration (8.1 Deployment Environment/Environment Matrix)
+# Implements strict network policies for production isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prod-network-policy
+  namespace: prod
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              environment: production
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              environment: production
