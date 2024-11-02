@@ -1,0 +1,186 @@
+# HUMAN TASKS:
+# 1. Set up SonarCloud account and configure SONAR_TOKEN secret in repository settings
+# 2. Configure SwiftLint for iOS project
+# 3. Configure ktlint for Android project
+# 4. Set up project-specific SonarCloud properties
+# 5. Ensure all required linting dependencies are installed in respective projects
+
+name: Code Quality Checks
+
+# Requirement: Code Quality Standards (8.5 CI/CD Pipeline)
+# Triggers workflow on pull requests and pushes to main branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Requirement: Development Standards (5.1 Programming Languages)
+# Defines environment variables for different language toolchains
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  RUBY_VERSION: '3.0'
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+jobs:
+  # Requirement: Code Quality Standards (8.5 CI/CD Pipeline)
+  # Backend TypeScript code quality checks
+  backend-quality-check:
+    name: Backend Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/backend/package.json
+
+      - name: Install Dependencies
+        working-directory: src/backend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: src/backend
+        run: |
+          npm run lint || (echo "ESLint failed. Please fix the issues above." && exit 1)
+
+      - name: Run Prettier Check
+        working-directory: src/backend
+        run: |
+          npm run format:check || (echo "Prettier check failed. Please run 'npm run format' locally." && exit 1)
+
+      - name: TypeScript Compilation Check
+        working-directory: src/backend
+        run: |
+          npm run type-check || (echo "TypeScript compilation failed. Please fix the type errors above." && exit 1)
+
+      - name: SonarCloud Analysis
+        uses: SonarSource/sonarcloud-github-action@v1.9
+        with:
+          projectBaseDir: src/backend
+          args: >
+            -Dsonar.projectKey=founditure-backend
+            -Dsonar.organization=founditure
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.coverage.exclusions=tests/**/*,src/types/**/*
+
+  # Requirement: Code Quality Standards (8.5 CI/CD Pipeline)
+  # iOS Swift code quality checks
+  ios-quality-check:
+    name: iOS Code Quality
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Ruby
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+
+      - name: Install SwiftLint
+        run: |
+          brew install swiftlint
+          gem install bundler
+          bundle install --gemfile=src/ios/Gemfile
+
+      - name: Run SwiftLint
+        working-directory: src/ios
+        run: |
+          swiftlint lint --reporter json > swiftlint-report.json || true
+
+      - name: Run Swift Format Check
+        working-directory: src/ios
+        run: |
+          swift-format lint -r src/ios/Founditure || (echo "Swift format check failed." && exit 1)
+
+      - name: SonarCloud Analysis
+        uses: SonarSource/sonarcloud-github-action@v1.9
+        with:
+          projectBaseDir: src/ios
+          args: >
+            -Dsonar.projectKey=founditure-ios
+            -Dsonar.organization=founditure
+            -Dsonar.sources=Founditure
+            -Dsonar.swift.swiftlint.report=swiftlint-report.json
+            -Dsonar.coverage.exclusions=Founditure/Resources/**/*
+
+  # Requirement: Code Quality Standards (8.5 CI/CD Pipeline)
+  # Android Kotlin code quality checks
+  android-quality-check:
+    name: Android Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Run ktlint Check
+        working-directory: src/android
+        run: |
+          ./gradlew ktlintCheck || (echo "ktlint check failed. Please fix the style issues." && exit 1)
+
+      - name: Run Android Lint
+        working-directory: src/android
+        run: |
+          ./gradlew lint || (echo "Android lint check failed. Please fix the issues above." && exit 1)
+
+      - name: SonarCloud Analysis
+        uses: SonarSource/sonarcloud-github-action@v1.9
+        with:
+          projectBaseDir: src/android
+          args: >
+            -Dsonar.projectKey=founditure-android
+            -Dsonar.organization=founditure
+            -Dsonar.sources=app/src/main
+            -Dsonar.tests=app/src/test
+            -Dsonar.kotlin.detekt.reportPaths=app/build/reports/detekt/detekt.xml
+            -Dsonar.coverage.exclusions=app/src/main/res/**/*
+
+  # Requirement: Security Controls (7.3.3 Security Controls)
+  # Super-linter for additional security and quality checks
+  security-quality-check:
+    name: Security and Quality Scan
+    runs-on: ubuntu-latest
+    needs: [backend-quality-check, ios-quality-check, android-quality-check]
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Run Super-Linter
+        uses: github/super-linter@v4
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_SWIFT: true
+          VALIDATE_KOTLIN: true
+          VALIDATE_YAML: true
+          VALIDATE_JSON: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_BASH: true
+          VALIDATE_DOCKERFILE: true
+          FILTER_REGEX_EXCLUDE: .*(dist|build|node_modules|.gradle).*
