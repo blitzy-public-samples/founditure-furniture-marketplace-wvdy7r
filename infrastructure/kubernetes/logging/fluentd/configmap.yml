@@ -1,0 +1,111 @@
+# Human Tasks:
+# 1. Ensure ENVIRONMENT and CLUSTER_NAME environment variables are set in the Fluentd DaemonSet
+# 2. Verify Elasticsearch service is deployed and accessible
+# 3. Adjust buffer and flush settings based on log volume
+# 4. Monitor Fluentd resource usage and adjust limits if needed
+
+# Addresses requirements:
+# - Log Management (5.5.1 DevOps Tools): ELK Stack implementation for centralized log management
+# - System Monitoring (3.2.2 Backend Service Architecture): Support Services including logging infrastructure
+# - Infrastructure Monitoring (8.5 CI/CD Pipeline): Logging and monitoring infrastructure deployment
+
+# Fluentd version: v1.14-1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: logging
+  labels:
+    app: fluentd
+    service: logging
+
+data:
+  fluent.conf: |
+    # Input source configuration for container logs
+    <source>
+      @type tail
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type json
+        time_key time
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+      </parse>
+    </source>
+
+    # Kubernetes metadata filter to enrich logs with pod information
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      kubernetes_url "#{ENV['KUBERNETES_URL']}"
+      cache_size 1000
+      watch false
+      verify_ssl false
+    </filter>
+
+    # Transform records to add environment and cluster information
+    <filter kubernetes.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        environment "#{ENV['ENVIRONMENT']}"
+        cluster_name "#{ENV['CLUSTER_NAME']}"
+        hostname "#{Socket.gethostname}"
+      </record>
+    </filter>
+
+    # Output configuration for Elasticsearch
+    <match kubernetes.**>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      logstash_format true
+      logstash_prefix founditure
+      include_tag_key true
+      type_name fluentd
+      tag_key @log_name
+      flush_interval 5s
+      num_threads 2
+
+      # Buffer configuration for reliability
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/kubernetes.system.buffer
+        flush_mode interval
+        retry_type exponential_backoff
+        flush_thread_count 2
+        flush_interval 5s
+        retry_forever false
+        retry_max_interval 30
+        chunk_limit_size 2M
+        queue_limit_length 8
+        overflow_action block
+      </buffer>
+    </match>
+
+    # System level error reporting
+    <label @ERROR>
+      <match **>
+        @type elasticsearch
+        host elasticsearch.logging.svc.cluster.local
+        port 9200
+        logstash_format true
+        logstash_prefix fluentd-error
+        flush_interval 5s
+        num_threads 2
+        <buffer>
+          @type file
+          path /var/log/fluentd-buffers/kubernetes.system.error.buffer
+          flush_mode interval
+          retry_type exponential_backoff
+          flush_thread_count 2
+          flush_interval 5s
+          retry_forever false
+          retry_max_interval 30
+          chunk_limit_size 2M
+          queue_limit_length 8
+          overflow_action block
+        </buffer>
+      </match>
+    </label>
