@@ -1,0 +1,100 @@
+# Human Tasks:
+# 1. Verify MQTT port (1883) is not blocked by network policies
+# 2. Ensure WebSocket port (9001) is accessible for web clients
+# 3. Configure monitoring for MQTT service metrics
+# 4. Review service DNS resolution in both prod and dev namespaces
+
+# Requirement: Event-driven messaging (1.1 System Overview/System Architecture)
+# Exposes MQTT broker service for real-time messaging capabilities
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt-service
+  # Using labels from specification for consistent service discovery
+  labels:
+    app: mqtt
+    component: messaging
+  annotations:
+    # Enable service monitoring
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9001"
+    # Service description
+    description: "MQTT message broker for real-time event-driven communication"
+spec:
+  # Using ClusterIP as specified for internal cluster communication
+  type: ClusterIP
+  
+  # Port configuration for MQTT and WebSocket protocols
+  ports:
+    # Standard MQTT port for client connections
+    - name: mqtt
+      port: 1883        # Service port
+      targetPort: 1883  # Container port
+      protocol: TCP
+    
+    # WebSocket port for web client connections
+    - name: mqtt-ws
+      port: 9001        # Service port
+      targetPort: 9001  # Container port
+      protocol: TCP
+  
+  # Selector matches the deployment labels
+  selector:
+    app: mqtt
+    component: messaging
+
+---
+# Development Environment Service
+# Requirement: Message Queue Infrastructure (3.3.2 Backend Technologies)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt-service
+  namespace: dev
+  labels:
+    app: mqtt
+    component: messaging
+    environment: development
+spec:
+  type: ClusterIP
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: 1883
+      protocol: TCP
+    - name: mqtt-ws
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+  selector:
+    app: mqtt
+    component: messaging
+    environment: development
+
+---
+# Production Environment Service
+# Requirement: Real-time Features (1.2 Scope/Core System Components)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt-service
+  namespace: prod
+  labels:
+    app: mqtt
+    component: messaging
+    environment: production
+spec:
+  type: ClusterIP
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: 1883
+      protocol: TCP
+    - name: mqtt-ws
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+  selector:
+    app: mqtt
+    component: messaging
+    environment: production
