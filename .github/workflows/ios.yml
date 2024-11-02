@@ -1,0 +1,180 @@
+# GitHub Actions workflow for iOS CI/CD
+# Implements automated build, test, and deployment pipeline for iOS application
+# Requirements addressed:
+# - iOS Native Development (3.3.1): Configures CI/CD pipeline for Swift 5.9+ and SwiftUI
+# - Mobile Platform Support (1.2): Ensures iOS 14+ compatibility and build requirements
+# - CI/CD Pipeline (8.5): Implements automated build, test, and deployment pipeline
+
+name: iOS CI/CD
+
+on:
+  # Trigger on pull requests to main and develop branches
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/ios/**'
+  
+  # Trigger on pushes to main branch
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/ios/**'
+  
+  # Allow manual workflow dispatch
+  workflow_dispatch:
+    description: 'Manual trigger for deployment'
+
+# Environment variables used across jobs
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  WORKSPACE: Founditure.xcworkspace
+  SCHEME: Founditure
+
+jobs:
+  # Test job: Runs the test suite
+  test:
+    name: Run Tests
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Ruby environment
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+      
+      - name: Cache CocoaPods dependencies
+        uses: actions/cache@v3
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      
+      - name: Install CocoaPods
+        run: |
+          cd src/ios
+          gem install cocoapods
+          pod install
+      
+      - name: Run unit and UI tests
+        run: |
+          cd src/ios
+          xcodebuild test \
+            -workspace $WORKSPACE \
+            -scheme $SCHEME \
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest' \
+            -enableCodeCoverage YES \
+            | xcpretty && exit ${PIPESTATUS[0]}
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: test-results
+          path: src/ios/build/reports
+  
+  # Build job: Creates release build
+  build:
+    name: Build App
+    runs-on: macos-latest
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Ruby environment
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+      
+      - name: Cache CocoaPods dependencies
+        uses: actions/cache@v3
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      
+      - name: Install CocoaPods
+        run: |
+          cd src/ios
+          gem install cocoapods
+          pod install
+      
+      - name: Build for release
+        run: |
+          cd src/ios
+          xcodebuild archive \
+            -workspace $WORKSPACE \
+            -scheme $SCHEME \
+            -archivePath build/Founditure.xcarchive \
+            -configuration Release \
+            | xcpretty && exit ${PIPESTATUS[0]}
+      
+      - name: Create IPA
+        run: |
+          cd src/ios
+          xcodebuild -exportArchive \
+            -archivePath build/Founditure.xcarchive \
+            -exportOptionsPlist exportOptions.plist \
+            -exportPath build/ipa
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: src/ios/build/ipa
+  
+  # Deploy job: Uploads to TestFlight
+  deploy:
+    name: Deploy to TestFlight
+    runs-on: macos-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: app-release
+          path: app-release
+      
+      - name: Setup credentials
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "$APPLE_API_KEY_BASE64" | base64 --decode > ~/private_keys/AuthKey_$APPLE_API_KEY_ID.p8
+      
+      - name: Upload to TestFlight
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+        run: |
+          xcrun altool --upload-app -f app-release/Founditure.ipa \
+            --apiKey $APPLE_API_KEY_ID \
+            --apiIssuer $APPLE_ISSUER_ID \
+            --type ios
+      
+      - name: Notify team
+        if: success()
+        run: |
+          echo "::notice::Successfully deployed to TestFlight"
+
+# List of human tasks required:
+# 1. Generate and configure Apple API Key in App Store Connect
+# 2. Add required secrets to GitHub repository:
+#    - APPLE_API_KEY: Base64 encoded API key file
+#    - APPLE_API_KEY_ID: API key identifier
+#    - APPLE_ISSUER_ID: App Store Connect issuer ID
+#    - MATCH_PASSWORD: Certificate and profile encryption password
+# 3. Create exportOptions.plist in src/ios directory with proper signing configuration
+# 4. Configure proper code signing identity and provisioning profiles in Xcode project
+# 5. Set up proper test devices in App Store Connect for TestFlight distribution
