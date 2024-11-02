@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- HUMAN TASKS:
+    1. Configure appropriate provisioning profiles for each environment
+    2. Set up push notification certificates in Apple Developer Portal
+    3. Configure associated domains in Apple Developer Portal
+    4. Verify app clip configuration if implementing app clips
+    5. Set up Face ID entitlements in developer portal -->
+
+    <!-- Core Application Settings -->
+    <key>CFBundleIdentifier</key>
+    <string>com.founditure.app</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>14.0</string>
+
+    <!-- Device Capabilities -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>arm64</string>
+    </array>
+
+    <!-- Interface Orientations -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    </array>
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+        <string>fetch</string>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- Privacy Permissions -->
+    <key>NSCameraUsageDescription</key>
+    <string>Founditure needs camera access to document furniture items</string>
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Founditure uses your location to find nearby furniture items</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Founditure uses your location to notify you about nearby furniture items</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Founditure needs access to your photo library to save and upload furniture photos</string>
+
+    <key>NSFaceIDUsageDescription</key>
+    <string>Founditure uses Face ID for secure authentication</string>
+
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Founditure needs microphone access for video documentation of furniture</string>
+
+    <!-- App Capabilities -->
+    <key>aps-environment</key>
+    <string>development</string>
+
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:founditure.com</string>
+    </array>
+
+    <!-- Security Settings -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>founditure.com</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.3</string>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+
+    <!-- Location Accuracy Settings -->
+    <key>NSLocationDefaultAccuracyReduced</key>
+    <true/>
+
+    <!-- Privacy - Location Temporary Usage Description Dictionary -->
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>FurniturePickup</key>
+        <string>Precise location is needed to coordinate furniture pickup</string>
+    </dict>
+
+    <!-- System Capabilities -->
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+</dict>
+</plist>
