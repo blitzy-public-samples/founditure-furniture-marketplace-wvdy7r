@@ -1,0 +1,206 @@
+# Requirement: Mobile CI/CD Pipeline (8.5 CI/CD Pipeline)
+name: Android CI/CD
+
+# Requirement: Automated build triggers (8.5 Pipeline Stages)
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/android/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/android/**'
+
+# Requirement: Security Controls (7.3.3 Security Controls)
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+# Requirement: Environment variables (8.5 Pipeline Stages)
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.1.0'
+  ANDROID_SDK_VERSION: '34'
+
+# Requirement: CI/CD Pipeline Implementation (8.5 Pipeline Stages)
+jobs:
+  # Requirement: Code Quality (8.5 Pipeline Stages)
+  code_quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./src/android/gradlew
+
+      - name: Run ktlint
+        working-directory: ./src/android
+        run: ./gradlew ktlintCheck
+
+      - name: Run detekt
+        working-directory: ./src/android
+        run: ./gradlew detekt
+
+      - name: Upload code quality report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-quality-report
+          path: src/android/app/build/reports/
+
+  # Requirement: Security Controls (7.3.3 Security Controls)
+  security_scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Run dependency vulnerability check
+        working-directory: ./src/android
+        run: ./gradlew dependencyCheckAnalyze
+
+      - name: Run Android Lint
+        working-directory: ./src/android
+        run: ./gradlew lint
+
+      - name: Upload security scan results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-scan-results
+          path: |
+            src/android/app/build/reports/dependency-check-report.html
+            src/android/app/build/reports/lint-results.html
+
+  # Requirement: Mobile CI/CD Pipeline (8.5 CI/CD Pipeline)
+  build:
+    name: Build and Test
+    needs: [code_quality, security_scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./src/android/gradlew
+
+      - name: Run unit tests
+        working-directory: ./src/android
+        run: ./gradlew test
+
+      - name: Build debug APK
+        working-directory: ./src/android
+        run: ./gradlew assembleDebug
+
+      - name: Build release APK
+        working-directory: ./src/android
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: src/android/app/build/reports/tests/
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: apk-artifacts
+          path: |
+            src/android/app/build/outputs/apk/debug/*.apk
+            src/android/app/build/outputs/apk/release/*.apk
+
+  # Requirement: Mobile CI/CD Pipeline - Deployment (8.5 CI/CD Pipeline)
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: apk-artifacts
+          path: artifacts
+
+      - name: Setup Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_KEY }}
+          packageName: com.founditure.android
+          releaseFiles: artifacts/release/*.apk
+          track: internal
+          status: completed
+          changesNotSentForReview: false
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            artifacts/release/*.apk
+          body_path: ${{ github.workspace }}/CHANGELOG.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify deployment status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
