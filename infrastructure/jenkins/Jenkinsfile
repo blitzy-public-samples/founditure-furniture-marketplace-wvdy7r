@@ -1,0 +1,295 @@
+// HUMAN TASKS:
+// 1. Configure Jenkins credentials for AWS, Docker registry, and source control
+// 2. Set up build agents with required tools (Node.js, Xcode, Android SDK)
+// 3. Configure SonarQube server connection
+// 4. Set up notification channels (Slack/Email)
+// 5. Configure environment-specific deployment approvers
+// 6. Set up artifact storage location
+// 7. Configure build timeout limits
+
+// Required Jenkins plugins:
+// - Pipeline: 2.x
+// - Docker Pipeline: 1.x
+// - Kubernetes CLI: 1.x
+// - SonarQube Scanner: 4.x
+// - AWS Credentials: 1.x
+// - Slack Notification: 2.x
+// - Email Extension: 2.x
+
+// Requirement: CI/CD Pipeline (8.5 CI/CD Pipeline)
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                  - name: builder
+                    image: founditure/builder:latest
+                    command:
+                    - cat
+                    tty: true
+                    resources:
+                      requests:
+                        memory: "4Gi"
+                        cpu: "2"
+                      limits:
+                        memory: "8Gi"
+                        cpu: "4"
+                  - name: docker
+                    image: docker:20.10
+                    command:
+                    - cat
+                    tty: true
+                    volumeMounts:
+                    - mountPath: /var/run/docker.sock
+                      name: docker-sock
+                  volumes:
+                  - name: docker-sock
+                    hostPath:
+                      path: /var/run/docker.sock
+            '''
+        }
+    }
+
+    // Requirement: Environment Matrix (8.1 Deployment Environment)
+    environment {
+        DOCKER_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ENVIRONMENTS = ['dev', 'staging', 'prod']
+        DEPLOYMENT_STRATEGIES = [
+            dev: 'direct',
+            staging: 'blue-green',
+            prod: 'canary'
+        ]
+    }
+
+    // Requirement: Pipeline Stages (8.5 CI/CD Pipeline)
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    // Clean workspace
+                    cleanWs()
+                    // Checkout code with submodules
+                    checkout scm
+                    sh 'git submodule update --init --recursive'
+                }
+            }
+        }
+
+        // Requirement: Build Stage (8.5 CI/CD Pipeline)
+        stage('Build') {
+            steps {
+                container('builder') {
+                    script {
+                        // Make build script executable
+                        sh 'chmod +x infrastructure/jenkins/scripts/build.sh'
+                        
+                        // Execute build script with environment
+                        withCredentials([
+                            string(credentialsId: 'aws-account-id', variable: 'AWS_ACCOUNT_ID'),
+                            string(credentialsId: 'aws-region', variable: 'AWS_REGION')
+                        ]) {
+                            sh """
+                                export BUILD_ENV=${BRANCH_NAME == 'main' ? 'prod' : 'dev'}
+                                infrastructure/jenkins/scripts/build.sh
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        // Requirement: Test Stage (8.5 CI/CD Pipeline)
+        stage('Test') {
+            parallel {
+                stage('Backend Tests') {
+                    steps {
+                        container('builder') {
+                            script {
+                                sh 'chmod +x infrastructure/jenkins/scripts/test.sh'
+                                sh """
+                                    export TEST_ENV=${BRANCH_NAME == 'main' ? 'prod' : 'dev'}
+                                    infrastructure/jenkins/scripts/test.sh run_backend_tests
+                                """
+                            }
+                        }
+                    }
+                }
+                
+                stage('Mobile Tests') {
+                    steps {
+                        container('builder') {
+                            script {
+                                parallel(
+                                    ios: {
+                                        sh 'infrastructure/jenkins/scripts/test.sh run_ios_tests'
+                                    },
+                                    android: {
+                                        sh 'infrastructure/jenkins/scripts/test.sh run_android_tests'
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Requirement: Security Controls (7.3.3 Security Controls)
+        stage('Security Scan') {
+            steps {
+                container('builder') {
+                    script {
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                sonar-scanner \
+                                    -Dsonar.projectKey=founditure \
+                                    -Dsonar.sources=. \
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                                    -Dsonar.login=${SONAR_AUTH_TOKEN}
+                            """
+                        }
+                        timeout(time: 10, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
+            }
+        }
+
+        // Requirement: Deployment Strategy (8.5 CI/CD Pipeline)
+        stage('Deploy') {
+            steps {
+                container('builder') {
+                    script {
+                        def environment = BRANCH_NAME == 'main' ? 'prod' : 
+                                        BRANCH_NAME == 'staging' ? 'staging' : 'dev'
+                        
+                        // Production deployment requires approval
+                        if (environment == 'prod') {
+                            timeout(time: 24, unit: 'HOURS') {
+                                input message: 'Approve production deployment?',
+                                      submitter: 'prod-approvers'
+                            }
+                        }
+
+                        // Execute deployment
+                        withCredentials([
+                            string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                            string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                            string(credentialsId: 'aws-region', variable: 'AWS_REGION')
+                        ]) {
+                            sh """
+                                chmod +x infrastructure/jenkins/scripts/deploy.sh
+                                infrastructure/jenkins/scripts/deploy.sh ${environment} ${BUILD_NUMBER}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Requirement: Post Actions (Pipeline Specification)
+    post {
+        success {
+            script {
+                // Send success notifications
+                notifySuccess()
+                // Archive artifacts
+                archiveArtifacts artifacts: 'build/**/*', fingerprint: true
+                // Update deployment status
+                updateDeploymentStatus('success')
+            }
+        }
+        failure {
+            script {
+                // Send failure notifications
+                notifyFailure()
+                // Collect debug information
+                collectDebugInfo()
+                // Trigger rollback if needed
+                if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'staging') {
+                    triggerRollback()
+                }
+            }
+        }
+        always {
+            script {
+                // Archive logs
+                archiveArtifacts artifacts: 'logs/**/*', allowEmptyArchive: true
+                // Clean workspace
+                cleanWs()
+            }
+        }
+    }
+}
+
+// Requirement: Notifications (Pipeline Specification)
+def notifySuccess() {
+    slackSend(
+        color: 'good',
+        message: "Build Successful - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+    )
+    emailext(
+        subject: "Build Successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+        body: """
+            Build completed successfully.
+            Check console output at ${env.BUILD_URL}
+        """,
+        recipientProviders: [developers(), requestor()]
+    )
+}
+
+def notifyFailure() {
+    slackSend(
+        color: 'danger',
+        message: "Build Failed - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+    )
+    emailext(
+        subject: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+        body: """
+            Build failed. Please investigate.
+            Check console output at ${env.BUILD_URL}
+        """,
+        recipientProviders: [developers(), requestor()]
+    )
+}
+
+// Requirement: Error Handling (Pipeline Specification)
+def collectDebugInfo() {
+    sh """
+        mkdir -p logs
+        cp -r \$(find . -name '*.log') logs/ || true
+        cp -r \$(find . -name 'test-results') logs/ || true
+        tar -czf logs/debug-info.tar.gz logs/
+    """
+}
+
+// Requirement: Deployment Strategy (Pipeline Specification)
+def triggerRollback() {
+    script {
+        def environment = env.BRANCH_NAME == 'main' ? 'prod' : 'staging'
+        sh """
+            chmod +x infrastructure/jenkins/scripts/rollback.sh
+            infrastructure/jenkins/scripts/rollback.sh ${environment} ${BUILD_NUMBER}
+        """
+    }
+}
+
+// Requirement: Deployment Status (Pipeline Specification)
+def updateDeploymentStatus(status) {
+    sh """
+        aws dynamodb put-item \
+            --table-name deployment-history \
+            --item '{
+                "build_number": {"S": "${BUILD_NUMBER}"},
+                "status": {"S": "${status}"},
+                "timestamp": {"S": "'"\$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"},
+                "branch": {"S": "${BRANCH_NAME}"},
+                "commit": {"S": "'"\$(git rev-parse HEAD)"'"}
+            }'
+    """
+}
