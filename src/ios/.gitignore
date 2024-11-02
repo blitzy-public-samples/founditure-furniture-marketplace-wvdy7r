@@ -1,0 +1,95 @@
+# Human Tasks:
+# 1. Ensure all sensitive credential files are properly named according to the patterns below
+# 2. Verify that the GoogleService-Info.plist is not committed to version control
+# 3. Configure proper certificate handling in your CI/CD pipeline
+# 4. Set up proper environment file management for different environments (.env files)
+
+# Xcode - Requirement: iOS Native Development
+# Excludes user-specific files while preserving shared project configuration
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+!*.xcodeproj/project.xcworkspace/
+*.xcuserstate
+project.xcworkspace/
+xcuserdata/
+
+# Build - Requirement: iOS Native Development
+# Excludes all build artifacts and intermediate files
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Dependencies - Requirement: iOS Native Development
+# Excludes package manager directories and resolved dependencies
+Pods/
+Carthage/Build/
+.swiftpm/
+*.xcframework/
+
+# Swift Package Manager - Requirement: iOS Native Development
+# Excludes SPM build artifacts and resolved packages
+.build/
+Packages/
+Package.pins
+Package.resolved
+
+# CocoaPods - Requirement: iOS Native Development
+# Excludes CocoaPods installation files and workspace
+Pods/
+*.xcworkspace
+Podfile.lock
+
+# Sensitive Files - Requirement: Security Requirements/Data Security
+# Excludes all credential files and sensitive configurations
+*.pem
+*.cer
+*.mobileprovision
+*.p12
+GoogleService-Info.plist
+Keys.plist
+Secrets.plist
+.env
+.env.*
+
+# System - Requirement: iOS Native Development
+# Excludes OS-generated files
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*.lock
+profile
+._*
+
+# IDE - Requirement: iOS Native Development
+# Excludes IDE-specific files and directories
+.idea/
+.vscode/
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+
+# Testing - Requirement: iOS Native Development
+# Excludes test reports and artifacts
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+test-reports/
+*.coverage
+*.xcresult/
+
+# Generated - Requirement: iOS Native Development
+# Excludes auto-generated source files
+*.generated.swift
+*.generated.h
+Generated/
+R.generated.swift
