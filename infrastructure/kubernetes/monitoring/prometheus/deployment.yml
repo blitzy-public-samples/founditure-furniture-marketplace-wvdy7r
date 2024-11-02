@@ -1,0 +1,80 @@
+# Human Tasks:
+# 1. Ensure persistent volume is provisioned for prometheus-storage-claim
+# 2. Verify RBAC permissions are configured for Prometheus service account
+# 3. Review and adjust resource limits based on cluster capacity
+# 4. Configure retention period based on storage capacity
+# 5. Set up network policies to restrict pod communication
+
+# Addresses requirements from:
+# - Section 3.3.4: Prometheus/Grafana for system monitoring and metrics collection
+# - Appendix D/System Health Metrics: Deployment configuration for metrics collection
+# - Section 3.5 Scalability Architecture: Metrics collection for auto-scaling and performance monitoring
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+      component: server
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: server
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 65534  # nobody user
+        runAsUser: 65534  # nobody user
+        runAsNonRoot: true
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.45.0  # Prometheus server container image
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=15d
+            - --web.console.libraries=/usr/share/prometheus/console_libraries
+            - --web.console.templates=/usr/share/prometheus/consoles
+          ports:
+            - containerPort: 9090
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-storage
+              mountPath: /prometheus
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-storage
+          persistentVolumeClaim:
+            claimName: prometheus-storage-claim
